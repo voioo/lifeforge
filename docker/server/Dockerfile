@@ -41,12 +41,12 @@ RUN bun --cwd ../shared build
 RUN bun build ./src/index.ts --target bun --minify --production --outfile=./dist/server.js
 
 # Create cleaned package.json without workspace deps for production install
-RUN bun -e "const pkg = require('./server/package.json'); \
+RUN bun -e "const pkg = require('./package.json'); \
     delete pkg.dependencies.shared; \
     delete pkg.dependencies['@lifeforge/log']; \
     delete pkg.dependencies['@lifeforge/server-utils']; \
     delete pkg.devDependencies; \
-    require('fs').writeFileSync('./server/package.docker.json', JSON.stringify(pkg, null, 2))"
+    require('fs').writeFileSync('./package.docker.json', JSON.stringify(pkg, null, 2))"
 
 # ============================================
 # Production stage - core server only (no modules)
