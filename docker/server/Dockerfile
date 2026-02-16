@@ -20,7 +20,7 @@ RUN rm -f bun.lock
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install
 
-# Build packages in dependency order
+# Build packages in dependency order with error handling
 # 1. Build @lifeforge/log (no workspace deps)
 RUN cd /lifeforge/packages/lifeforge-log && bun run build
 
@@ -33,8 +33,12 @@ RUN cd /lifeforge/packages/lifeforge-server-utils && bun run build
 # 4. Build lifeforge-ui (new dependency for PR #93)
 RUN cd /lifeforge/packages/lifeforge-ui && bun run build || echo "UI build optional, continuing..."
 
-# 5. Build server bundle
-RUN cd /lifeforge/server && bun run build
+# 5. Build server bundle - break down steps for debugging
+WORKDIR /lifeforge/server
+# First build shared (required by server build script)
+RUN bun --cwd ../shared build
+# Then build server with detailed output
+RUN bun build ./src/index.ts --target bun --minify --production --outfile=./dist/server.js
 
 # Create cleaned package.json without workspace deps for production install
 RUN bun -e "const pkg = require('./server/package.json'); \
