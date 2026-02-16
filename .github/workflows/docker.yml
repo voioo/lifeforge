@@ -8,6 +8,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Prevent multiple simultaneous builds for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/lifeforge

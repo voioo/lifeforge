@@ -2,16 +2,17 @@
 
 # Test script for pulling and running pre-built Docker images from GitHub Container Registry
 # Usage: ./scripts/test-docker-images.sh [tag]
-# Default tag: pr-93-review
+# Default tag: main
 
 set -e
 
-TAG=${1:-pr-93-review}
+TAG=${1:-main}
 REPO_OWNER="voioo"
 
 echo "🐳 Testing LifeForge Docker Images"
 echo "==================================="
 echo "Tag: $TAG"
+echo "Registry: ghcr.io/${REPO_OWNER}"
 echo ""
 
 # Check if docker is installed
@@ -56,9 +57,11 @@ if [ ! -f "./env/.env.docker" ]; then
     fi
 fi
 
-# Start services
+# Stop any existing containers
 docker-compose -f docker-compose.images.yaml down 2>/dev/null || true
-docker-compose -f docker-compose.images.yaml up -d
+
+# Start services with the specified tag
+LIFEFORGE_TAG=${TAG} docker-compose -f docker-compose.images.yaml up -d
 
 echo ""
 echo "⏳ Waiting for services to start..."
@@ -80,9 +83,14 @@ echo ""
 echo "📝 Useful Commands:"
 echo "  - View logs: docker-compose -f docker-compose.images.yaml logs -f"
 echo "  - Stop: docker-compose -f docker-compose.images.yaml down"
-echo "  - Restart: docker-compose -f docker-compose.images.yaml restart"
+echo "  - Restart: LIFEFORGE_TAG=${TAG} docker-compose -f docker-compose.images.yaml restart"
 echo ""
 
 echo "✅ Setup complete! LifeForge should be available at http://localhost"
 echo ""
 echo "⚠️  Note: First startup may take a few minutes as the database initializes."
+echo ""
+echo "🔄 To test a different version:"
+echo "   ./scripts/test-docker-images.sh pr-93-review"
+echo "   ./scripts/test-docker-images.sh v1.0.0"
+echo "   ./scripts/test-docker-images.sh latest"

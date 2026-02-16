@@ -1,9 +1,21 @@
 # Docker Compose for testing pre-built images from GitHub Container Registry
-# Usage: docker-compose -f docker-compose.images.yaml up
+# 
+# Usage:
+#   # Use main branch images (default)
+#   docker-compose -f docker-compose.images.yaml up
+#
+#   # Use specific tag/branch
+#   LIFEFORGE_TAG=pr-93-review docker-compose -f docker-compose.images.yaml up
+#
+#   # Use latest
+#   LIFEFORGE_TAG=latest docker-compose -f docker-compose.images.yaml up
+#
+#   # Use specific version
+#   LIFEFORGE_TAG=v1.0.0 docker-compose -f docker-compose.images.yaml up
 
 services:
   db:
-    image: ghcr.io/voioo/lifeforge-db:pr-93-review
+    image: ghcr.io/voioo/lifeforge-db:${LIFEFORGE_TAG:-main}
     container_name: lifeforge-db
     restart: unless-stopped
     env_file:
@@ -24,7 +36,7 @@ services:
       start_period: 10s
 
   db-init:
-    image: ghcr.io/voioo/lifeforge-server:pr-93-review
+    image: ghcr.io/voioo/lifeforge-server:${LIFEFORGE_TAG:-main}
     container_name: lifeforge-db-init
     env_file:
       - ./env/.env.docker
@@ -43,7 +55,7 @@ services:
     entrypoint: ["/bin/sh", "-c", "echo 'DB init would run here'"]
 
   server:
-    image: ghcr.io/voioo/lifeforge-server:pr-93-review
+    image: ghcr.io/voioo/lifeforge-server:${LIFEFORGE_TAG:-main}
     container_name: lifeforge-server
     restart: unless-stopped
     env_file:
@@ -62,7 +74,7 @@ services:
         condition: service_completed_successfully
 
   client:
-    image: ghcr.io/voioo/lifeforge-client:pr-93-review
+    image: ghcr.io/voioo/lifeforge-client:${LIFEFORGE_TAG:-main}
     container_name: lifeforge-client
     restart: unless-stopped
     ports:
