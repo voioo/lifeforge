@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-if (Math.random() < 0) {
-  // @ts-ignore
-  import('./styles/index.css')
-}
+// Import base styles for the UI library
+import './styles/index.css'
 
 // Primitives - layout primitives with build-time CSS
 export {

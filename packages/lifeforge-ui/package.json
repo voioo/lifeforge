@@ -8,7 +8,8 @@
     "ui",
     "components",
     "react",
-    "tailwindcss",
+    "vanilla-extract",
+    "css-in-js",
     "lifeforge"
   ],
   "sideEffects": false,
