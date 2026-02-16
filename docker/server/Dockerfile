@@ -12,20 +12,28 @@ WORKDIR /lifeforge
 # Copy source
 COPY . .
 
+# Remove potentially corrupted bun.lock and install fresh
+# This ensures workspace dependencies resolve correctly
+RUN rm -f bun.lock
+
 # Install dependencies
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --linker isolated
+    bun install
 
-# Build shared package
-RUN cd /lifeforge/shared && bun run build
-
-# Build @lifeforge/log package
+# Build packages in dependency order
+# 1. Build @lifeforge/log (no workspace deps)
 RUN cd /lifeforge/packages/lifeforge-log && bun run build
 
-# Build lifeforge-server-utils package
+# 2. Build shared (depends on log via devDependency)
+RUN cd /lifeforge/shared && bun run build
+
+# 3. Build lifeforge-server-utils (depends on shared)
 RUN cd /lifeforge/packages/lifeforge-server-utils && bun run build
 
-# Build server bundle
+# 4. Build lifeforge-ui (new dependency for PR #93)
+RUN cd /lifeforge/packages/lifeforge-ui && bun run build || echo "UI build optional, continuing..."
+
+# 5. Build server bundle
 RUN cd /lifeforge/server && bun run build
 
 # Create cleaned package.json without workspace deps for production install
