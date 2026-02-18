@@ -9,9 +9,9 @@ import { decrypt2, encrypt, encrypt2 } from '@functions/auth/encryption'
 import { default as _validateOTP } from '@functions/auth/validateOTP'
 
 import { currentSession, twoFAStates } from '..'
+import forge from '../forge'
 import { removeSensitiveData, updateNullData } from '../utils/auth'
 import { verifyAppOTP, verifyEmailOTP } from '../utils/otp'
-import forge from '../forge'
 
 // Generate a unique challenge per request with 5-minute expiration
 function generateChallenge(): string {
@@ -22,7 +22,23 @@ export const getChallenge = forge
   .query()
   .description('Retrieve 2FA challenge token')
   .input({})
-  .callback(async () => generateChallenge())
+  .callback(async ({ pb }) => {
+    const userId = pb.instance.authStore.record?.id
+
+    const challenge = generateChallenge()
+
+    // Store per-user challenge so subsequent calls (like generateAuthenticatorLink)
+    // can reuse the same challenge value for encryption/decryption.
+    if (userId) {
+      twoFAStates.set(userId, {
+        ...twoFAStates.get(userId),
+        challenge,
+        challengeExpiresAt: dayjs().add(5, 'minutes').toISOString()
+      })
+    }
+
+    return challenge
+  })
 
 export const requestOTP = forge
   .query()
@@ -37,8 +53,11 @@ export const requestOTP = forge
     const otp = await pb.instance
       .collection('users')
       .requestOTP(email)
-      .catch((error) => {
-        throw new ClientError(`Failed to request OTP: ${error instanceof Error ? error.message : 'Unknown error'}`, 400)
+      .catch(error => {
+        throw new ClientError(
+          `Failed to request OTP: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          400
+        )
       })
 
     currentSession.tokenId = v4()
@@ -111,7 +130,19 @@ export const generateAuthenticatorLink = forge
         tempCodeExpiresAt: dayjs().add(5, 'minutes').toISOString()
       })
 
-      const challenge = generateChallenge()
+      // Prefer an existing per-user challenge created via `getChallenge()`
+      const existing = twoFAStates.get(userId)
+
+      const challenge = existing?.challenge || generateChallenge()
+
+      // If we generated a new challenge here, store it so the client can retrieve it
+      if (!existing) {
+        twoFAStates.set(userId, {
+          ...twoFAStates.get(userId),
+          challenge,
+          challengeExpiresAt: dayjs().add(5, 'minutes').toISOString()
+        })
+      }
 
       return encrypt2(
         encrypt2(
@@ -151,12 +182,18 @@ export const verifyAndEnable = forge
 
       const userState = twoFAStates.get(userId)
       if (!userState?.tempCode || !userState.tempCodeExpiresAt) {
-        throw new ClientError('Authenticator setup expired. Please start over.', 400)
+        throw new ClientError(
+          'Authenticator setup expired. Please start over.',
+          400
+        )
       }
 
       if (dayjs().isAfter(dayjs(userState.tempCodeExpiresAt))) {
         twoFAStates.delete(userId)
-        throw new ClientError('Authenticator setup expired. Please start over.', 400)
+        throw new ClientError(
+          'Authenticator setup expired. Please start over.',
+          400
+        )
       }
 
       const challenge = generateChallenge()
@@ -272,8 +309,11 @@ export const verify = forge
     await pb
       .collection('users')
       .authRefresh()
-      .catch((error) => {
-        throw new ClientError(`Session validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 401)
+      .catch(error => {
+        throw new ClientError(
+          `Session validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          401
+        )
       })
 
     if (!pb.authStore.isValid || !pb.authStore.record) {

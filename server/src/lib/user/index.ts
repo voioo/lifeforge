@@ -27,6 +27,8 @@ interface TwoFAState {
   expiresAt?: string
   tempCode?: string
   tempCodeExpiresAt?: string
+  challenge?: string
+  challengeExpiresAt?: string
 }
 
 export const twoFAStates = new Map<string, TwoFAState>()
